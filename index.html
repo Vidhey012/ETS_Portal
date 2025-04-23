@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETS Portal</title>
+    <link rel="icon" type="image/x-icon" href="logo.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --day-off: #ffdddd;
+            --assigned-task: #d4edda;
+            --unassigned-task: #fff3cd;
+            --available: #f8f9fa;
+            --header-bg: #2c3e50;
+            --primary-accent: #3498db;
+            --secondary-accent: #2980b9;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            background-attachment: fixed;
+            background-image: url("bg.jpg");
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+            border: none;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: var(--header-bg);
+            color: white;
+            font-weight: 600;
+            padding: 15px 20px;
+            border-bottom: none;
+        }
+        
+        .table-responsive {
+            text-align: center;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        .simple-footer {
+  text-align: center;
+  padding: 15px 0;
+  background-color: #1111111e;
+  color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 16px;
+}
+
+        .table th {
+            background-color: var(--header-bg);
+            color: white;
+            font-weight: 500;
+            padding: 12px 15px;
+        }
+        
+        .table td {
+            padding: 12px 15px;
+            vertical-align: middle;
+        }
+        
+        .day-off {
+            background-color: var(--day-off);
+            color: #d63031;
+            font-weight: 500;
+        }
+        
+        .assigned-task {
+            background-color: var(--assigned-task);
+            color: #155724;
+            border-left: 3px solid #28a745;
+        }
+        
+        .unassigned-task {
+            background-color: var(--unassigned-task);
+            color: #856404;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .available {
+            background-color: var(--available);
+            color: #6c757d;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-accent);
+            border-color: var(--primary-accent);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-accent);
+            border-color: var(--secondary-accent);
+        }
+        
+        .btn-success {
+            padding: 10px 25px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-add {
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        
+        .btn-remove {
+            background: transparent;
+            border: none;
+            color: #dc3545;
+            font-size: 1.2rem;
+            padding: 0 5px;
+        }
+        
+        .btn-remove:hover {
+            color: #c82333;
+        }
+        
+        .input-group-text {
+            background-color: #e9ecef;
+        }
+        
+        h1 {
+            color: var(--header-bg);
+            font-weight: 700;
+            margin-bottom: 30px;
+            position: relative;
+            padding-bottom: 15px;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background-color: var(--primary-accent);
+            border-radius: 2px;
+        }
+        
+        .status-legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .status-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        /* Animation for table rows */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        #timetableBody tr {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        
+        #timetableBody tr:nth-child(1) { animation-delay: 0.1s; }
+        #timetableBody tr:nth-child(2) { animation-delay: 0.2s; }
+        #timetableBody tr:nth-child(3) { animation-delay: 0.3s; }
+        #timetableBody tr:nth-child(4) { animation-delay: 0.4s; }
+        #timetableBody tr:nth-child(5) { animation-delay: 0.5s; }
+        #timetableBody tr:nth-child(6) { animation-delay: 0.6s; }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <h1 class="text-center">Employee Task Scheduler</h1>
+        
+        <!-- <div class="status-legend">
+            <div class="status-item">
+                <div class="status-color" style="background-color: var(--day-off);"></div>
+                <span>Day Off</span>
+            </div>
+            <div class="status-item">
+                <div class="status-color" style="background-color: var(--assigned-task);"></div>
+                <span>Assigned Task</span>
+            </div>
+            <div class="status-item">
+                <div class="status-color" style="background-color: var(--unassigned-task);"></div>
+                <span>Unassigned Task</span>
+            </div>
+            <div class="status-item">
+                <div class="status-color" style="background-color: var(--available);"></div>
+                <span>Available</span>
+            </div>
+        </div> -->
+        
+        <!-- Employee Input Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-users me-2"></i>Employee Information</span>
+                <button id="addEmployee" class="btn btn-primary btn-sm btn-add">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="employeeTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Week Offs</th>
+                                <th>Assigned Tasks</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="text" class="form-control" placeholder="Employee name"></td>
+                                <td><input type="text" class="form-control" placeholder="Monday, Tuesday"></td>
+                                <td><input type="text" class="form-control" placeholder="Task1, Task2"></td>
+                                <td><button class="btn-remove remove-row"><i class="fas fa-trash"></i></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unassigned Tasks Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-tasks me-2"></i>Unassigned Tasks</span>
+                <button id="addTask" class="btn btn-primary btn-sm btn-add">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="taskTable">
+                        <thead>
+                            <tr>
+                                <th>Task Description</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="text" class="form-control" placeholder="Task description"></td>
+                                <td><button class="btn-remove remove-row"><i class="fas fa-trash"></i></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button id="saveData" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save Data
+            </button>
+            <button id="loadData" class="btn btn-secondary">
+                <i class="fas fa-folder-open me-2"></i>Load Data
+            </button>
+            <button id="generateBtn" class="btn btn-success">
+                <i class="fas fa-calendar-alt me-2"></i>Generate Timetable
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="mt-5" style="display: none;">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-calendar-week me-2"></i>Weekly Timetable (Monday - Friday)</span>
+                    <button id="exportBtn" class="btn btn-sm btn-light">
+                        <i class="fas fa-file-export me-1"></i>Export
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" id="timetable">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Monday</th>
+                                    <th>Tuesday</th>
+                                    <th>Wednesday</th>
+                                    <th>Thursday</th>
+                                    <th>Friday</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timetableBody">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="simple-footer">
+        <p>Made with ❤️ by <b><a href="https://vidhey.netlify.app/">Vidhey Bhogadi</a></b></p>
+      </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Data storage
+        let scheduleData = {
+            employees: [],
+            unassignedTasks: []
+        };
+
+        // DOM Elements
+        const employeeTable = document.querySelector('#employeeTable tbody');
+        const taskTable = document.querySelector('#taskTable tbody');
+        const timetableBody = document.getElementById('timetableBody');
+        const resultsSection = document.getElementById('results');
+
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Try to load saved data
+            loadSavedData();
+            
+            // Add event listeners
+            document.getElementById('addEmployee').addEventListener('click', addEmployeeRow);
+            document.getElementById('addTask').addEventListener('click', addTaskRow);
+            document.getElementById('generateBtn').addEventListener('click', generateTimetable);
+            document.getElementById('saveData').addEventListener('click', saveData);
+            document.getElementById('loadData').addEventListener('click', loadData);
+            document.getElementById('exportBtn').addEventListener('click', exportTimetable);
+            
+            // Delegated event for remove buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.remove-row')) {
+                    e.target.closest('tr').remove();
+                }
+            });
+        });
+
+        // Add new employee row
+        function addEmployeeRow() {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="form-control" placeholder="Employee name"></td>
+                <td><input type="text" class="form-control" placeholder="Monday, Tuesday"></td>
+                <td><input type="text" class="form-control" placeholder="Task1, Task2"></td>
+                <td><button class="btn-remove remove-row"><i class="fas fa-trash"></i></button></td>
+            `;
+            employeeTable.appendChild(row);
+        }
+
+        // Add new task row
+        function addTaskRow() {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="form-control" placeholder="Task description"></td>
+                <td><button class="btn-remove remove-row"><i class="fas fa-trash"></i></button></td>
+            `;
+            taskTable.appendChild(row);
+        }
+
+        // Collect data from tables
+        function collectData() {
+            scheduleData.employees = [];
+            scheduleData.unassignedTasks = [];
+            
+            // Get employee data
+            document.querySelectorAll('#employeeTable tbody tr').forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                const name = inputs[0].value.trim();
+                
+                if (name) {
+                    scheduleData.employees.push({
+                        name: name,
+                        weekOffs: inputs[1].value.split(',').map(item => item.trim().toLowerCase()),
+                        tasks: inputs[2].value.split(/[,|]/).map(item => item.trim()).filter(item => item)
+                    });
+                }
+            });
+            
+            // Get unassigned tasks
+            document.querySelectorAll('#taskTable tbody tr').forEach(row => {
+                const input = row.querySelector('input');
+                const task = input.value.trim();
+                if (task) {
+                    scheduleData.unassignedTasks.push(task);
+                }
+            });
+        }
+
+        // Generate timetable with all constraints
+        // Main timetable generation function
+function generateTimetable() {
+    
+    collectData();
+    
+    // Reset timetable
+    timetableBody.innerHTML = '';
+    resultsSection.style.display = 'none';
+    
+    if (scheduleData.employees.length === 0) {
+        showMessage('No employee data entered');
+        return;
+    }
+    
+    const timetable = initializeTimetable(days);
+    
+    // 1. Assign all allocated tasks first
+    assignAllocatedTasksWithPriority(timetable, days);
+    
+    // 2. Distribute unassigned tasks to fill all gaps
+    distributeUnassignedTasksCompletely(timetable, days);
+    
+    // 3. Final pass to ensure 100% coverage
+    guaranteeFullCoverage(timetable, days);
+    
+    // Display results
+    displayTimetable(timetable);
+    resultsSection.style.display = 'block';
+    window.scrollTo({
+  top: document.body.scrollHeight,
+  behavior: 'smooth' // Use 'auto' for instant scroll
+});
+}
+
+// Initialize empty timetable structure
+function initializeTimetable(days) {
+    return scheduleData.employees.map(employee => ({
+        employee: employee.name,
+        isAllocated: employee.tasks.length > 0,
+        tasksDone: [],
+        previousTask: null,
+        ...Object.fromEntries(days.map(day => [
+            day, {
+                type: employee.weekOffs.includes(day) ? 'day-off' : 'available',
+                task: employee.weekOffs.includes(day) ? 'Day Off' : null,
+                isWorking: false
+            }
+        ]))
+    }));
+}
+
+// Assign tasks to allocated employees first
+function assignAllocatedTasksWithPriority(timetable, days) {
+    // First assign tasks that must be done on specific days
+    days.forEach(day => {
+        timetable.forEach((employee, empIndex) => {
+            if (employee.isAllocated && employee[day].type !== 'day-off') {
+                const empTasks = getEmployeeTasks(employee.employee);
+                const availableTasks = empTasks.filter(task => 
+                    !employee.tasksDone.includes(task) && 
+                    !isTaskTakenByOthers(timetable, day, task)
+                );
+                
+                if (availableTasks.length > 0) {
+                    const task = availableTasks[0];
+                    assignTask(timetable, empIndex, day, task, 'assigned-task');
+                }
+            }
+        });
+    });
+    
+    // Then assign remaining allocated tasks
+    timetable.forEach((employee, empIndex) => {
+        if (!employee.isAllocated) return;
+        
+        const empTasks = getEmployeeTasks(employee.employee);
+        const unassignedTasks = empTasks.filter(task => 
+            !employee.tasksDone.includes(task)
+        );
+        
+        unassignedTasks.forEach(task => {
+            for (const day of days) {
+                if (employee[day].type !== 'day-off' && 
+                    !employee[day].isWorking &&
+                    !isTaskTakenByOthers(timetable, day, task) &&
+                    employee.previousTask !== task) {
+                    
+                    assignTask(timetable, empIndex, day, task, 'assigned-task');
+                    break;
+                }
+            }
+        });
+    });
+}
+
+// Distribute unassigned tasks to fill all gaps
+function distributeUnassignedTasksCompletely(timetable, days) {
+    if (scheduleData.unassignedTasks.length === 0) return;
+    
+    // Create a pool of tasks that repeats as needed
+    const taskPool = [];
+    while (taskPool.length < days.length * 2) {
+        taskPool.push(...scheduleData.unassignedTasks);
+    }
+    
+    days.forEach(day => {
+        // Get all unallocated employees available this day
+        const availableEmps = timetable
+            .filter(emp => !emp.isAllocated && emp[day].type !== 'day-off' && !emp[day].isWorking)
+            .sort(() => Math.random() - 0.5);
+        
+        availableEmps.forEach(emp => {
+            const empIndex = timetable.findIndex(e => e.employee === emp.employee);
+            const task = findSuitableTask(timetable, empIndex, day, taskPool);
+            if (task) {
+                assignTask(timetable, empIndex, day, task, 'unassigned-task');
+            }
+        });
+    });
+}
+
+// Final pass to ensure no empty slots
+function guaranteeFullCoverage(timetable, days) {
+    timetable.forEach(employee => {
+        const empIndex = timetable.findIndex(e => e.employee === employee.employee);
+        days.forEach(day => {
+            if (employee[day].type !== 'day-off' && !employee[day].isWorking) {
+                const task = employee.isAllocated
+                    ? getNextAllocatedTask(timetable, empIndex)
+                    : getNextUnassignedTask(timetable, empIndex);
+                
+                if (task) {
+                    assignTask(timetable, empIndex, day, task, 
+                              employee.isAllocated ? 'assigned-task' : 'unassigned-task');
+                }
+            }
+        });
+    });
+}
+
+// Helper functions
+function assignTask(timetable, empIndex, day, task, type) {
+    timetable[empIndex][day].task = task;
+    timetable[empIndex][day].type = type;
+    timetable[empIndex][day].isWorking = true;
+    timetable[empIndex].tasksDone.push(task);
+    timetable[empIndex].previousTask = task;
+}
+
+function isTaskTakenByOthers(timetable, day, task) {
+    return timetable.some(emp => emp[day].task === task);
+}
+
+function getEmployeeTasks(employeeName) {
+    const employee = scheduleData.employees.find(e => e.name === employeeName);
+    return employee ? employee.tasks : [];
+}
+
+function getNextAllocatedTask(timetable, empIndex) {
+    const employee = scheduleData.employees.find(e => e.name === timetable[empIndex].employee);
+    return employee.tasks.find(task => !timetable[empIndex].tasksDone.includes(task));
+}
+
+function getNextUnassignedTask(timetable, empIndex) {
+    return scheduleData.unassignedTasks.find(task => 
+        !timetable[empIndex].tasksDone.includes(task)
+    ) || scheduleData.unassignedTasks[0];
+}
+
+function findSuitableTask(timetable, empIndex, day, taskPool) {
+    const dayIndex = days.indexOf(day);
+    const yesterday = dayIndex > 0 ? days[dayIndex - 1] : null;
+    const yesterdayTask = yesterday ? timetable[empIndex][yesterday].task : null;
+    
+    for (const task of taskPool) {
+        if (task !== yesterdayTask && !isTaskTakenByOthers(timetable, day, task)) {
+            return task;
+        }
+    }
+    return taskPool[0];
+}
+
+function showMessage(msg) {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td colspan="6" class="text-center py-4">${msg}</td>`;
+    timetableBody.appendChild(row);
+    resultsSection.style.display = 'block';
+}
+
+
+    function displayTimetable(timetable) {
+      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+      timetableBody.innerHTML = '';
+
+      timetable.forEach(employee => {
+        const row = document.createElement('tr');
+        const nameCell = document.createElement('td');
+        nameCell.textContent = employee.employee;
+        nameCell.style.fontWeight = '600';
+        row.appendChild(nameCell);
+
+        days.forEach(day => {
+          const cell = document.createElement('td');
+          cell.textContent = employee[day].task;
+          if (employee[day].type) cell.classList.add(employee[day].type);
+          row.appendChild(cell);
+        });
+
+        timetableBody.appendChild(row);
+      });
+    }
+
+    function exportTimetable() {
+      const table = document.getElementById('timetable');
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.table_to_sheet(table);
+      XLSX.utils.book_append_sheet(wb, ws, "Timetable");
+      XLSX.writeFile(wb, 'Employee_Timetable.xlsx');
+    }
+
+        // Save data to localStorage
+        function saveData() {
+            collectData();
+            localStorage.setItem('employeeTaskSchedulerData', JSON.stringify(scheduleData));
+            alert('Data saved successfully!');
+        }
+
+        // Load data from localStorage
+        function loadData() {
+            const savedData = localStorage.getItem('employeeTaskSchedulerData');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    
+                    // Clear current tables
+                    employeeTable.innerHTML = '';
+                    taskTable.innerHTML = '';
+                    
+                    // Add employee rows
+                    data.employees.forEach(employee => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><input type="text" class="form-control" value="${employee.name}" disabled></td>
+                            <td><input type="text" class="form-control" value="${employee.weekOffs.join(', ')}" disabled></td>
+                            <td><input type="text" class="form-control" value="${employee.tasks.join(', ')}" disabled></td>
+                            <td><button class="btn-remove remove-row"><i class="fas fa-trash"></i></button></td>
+                        `;
+                        employeeTable.appendChild(row);
+                    });
+                    
+                    // Add task rows
+                    data.unassignedTasks.forEach(task => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><input type="text" class="form-control" value="${task}" disabled></td>
+                            <td><button class="btn-remove remove-row"><i class="fas fa-trash"></i></button></td>
+                        `;
+                        taskTable.appendChild(row);
+                    });
+                    
+                    alert('Data loaded successfully!');
+                } catch (e) {
+                    alert('Error loading saved data: ' + e.message);
+                }
+            } else {
+                alert('No saved data found');
+            }
+        }
+
+        // Try to load saved data on page load
+        function loadSavedData() {
+            const savedData = localStorage.getItem('employeeTaskSchedulerData');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    if (data.employees.length > 0 || data.unassignedTasks.length > 0) {
+                        if (confirm('Load previously saved data?')) {
+                            loadData();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing saved data:', e);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
